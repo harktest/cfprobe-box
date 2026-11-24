@@ -1,9 +1,10 @@
 #!/bin/sh
 # CF-Server-Monitor probe container. Needs env SECRET; optional NAME, SERVER_ID, PORT.
 PORT="${PORT:-8080}"
-mkdir -p /www /data && echo ok > /www/index.html
-busybox-extras httpd -f -p "$PORT" -h /www &
-cat > /data/config.conf <<CONF
+D="${DATA_DIR:-/tmp/cfprobe}"
+mkdir -p /tmp/www "$D" && echo ok > /tmp/www/index.html
+for p in "$PORT" 8000 8080; do busybox-extras httpd -f -p "$p" -h /tmp/www 2>/dev/null & done
+cat > $D/config.conf <<CONF
 SERVER_ID="${SERVER_ID:-}"
 SECRET="${SECRET}"
 WORKER_URL="${WORKER_URL:-https://cf-server-monitor.boy2026.workers.dev/update}"
@@ -26,10 +27,10 @@ UA="cfsm"
 AUTO_UPDATE="0"
 UPDATE_PROXY=""
 CONF
-chmod 600 /data/config.conf
-( sleep 90; echo "probe SERVER_ID now: $(grep ^SERVER_ID /data/config.conf)" ) &
-cd /data
+chmod 600 $D/config.conf
+( sleep 90; echo "probe SERVER_ID now: $(grep ^SERVER_ID $D/config.conf)" ) &
+cd "$D"
 while true; do
-  cf-probe run -config /data/config.conf
+  cf-probe run -config $D/config.conf
   echo "cf-probe exited $?, restart in 30s"; sleep 30
 done
